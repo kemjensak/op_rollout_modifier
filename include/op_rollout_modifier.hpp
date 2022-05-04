@@ -64,8 +64,8 @@ namespace op_rollout_modifier
             RolloutModifierClass();
             ~RolloutModifierClass();            
 
-            void run();
-            void GetObjectSpeedFromRadarPoints();
+            void mainLoop();
+            
         
         protected:
             ros::NodeHandle nh;
@@ -74,19 +74,38 @@ namespace op_rollout_modifier
             std::string radar_topic_;
             std::vector<RadarXYZ> radar_points_transformed_, final_radar_points_;
             std::vector<autoware_msgs::DetectedObject> lidar_objects_filtered_;
+            bool aes_flag_;
             float x_min_, x_max_, y_min_, y_max_, z_min_, z_max_, thres_radius_;
+            float sum_radar_velocity_, mean_velocity_, min_range_, last_min_range_;
+            float emr_gain_;
+            std_msgs::Int32 emr_rollout_num_;
+
+            int m_nDummyObjPerRep;
+            int m_nDetectedObjRepresentations;
+            std::vector<visualization_msgs::MarkerArray> m_DetectedPolygonsDummy;
+            std::vector<visualization_msgs::MarkerArray> m_DetectedPolygonsActual;
+            visualization_msgs::MarkerArray m_DetectedPolygonsAllMarkers;
+            visualization_msgs::MarkerArray m_DetectionCircles;
+
+            std::vector<visualization_msgs::MarkerArray> m_MatchingInfoDummy;
+            std::vector<visualization_msgs::MarkerArray> m_MatchingInfoActual;
+
 
             tf::StampedTransform radar2lidar_transform_;
 	        tf::TransformListener tf_listener;
 
             geometry_msgs::Pose radar2lidar_pose_;
-
+            
             void callbackGetRadarData(const PointCloudRadar::ConstPtr &msg);
             void callbackGetLocalPlannerPath(const autoware_msgs::LaneArrayConstPtr& msg);
             void callbackGetDetectedObjectsArray(const autoware_msgs::DetectedObjectArrayConstPtr& msg);
-
+            void VisualizeLocalTracking();
+            void getObjectdataFromRadarPoints(const vector<autoware_msgs::DetectedObject>& lidar_objects_filtered, const vector<RadarXYZ>& radar_points_transformed);
+            void emergencyDetector(const float& range, const float& velocity);
+            
             ros::Publisher pub_rollouts_number;
-            ros::Publisher pub_RadarPointRviz;
+            // ros::Publisher pub_RadarPointRviz;
+            ros::Publisher pub_FilteredPolygonsRviz;
 
             ros::Subscriber sub_LocalPlannerPaths;
             ros::Subscriber sub_RadarData;
