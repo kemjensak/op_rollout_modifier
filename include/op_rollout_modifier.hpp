@@ -79,16 +79,15 @@ namespace op_rollout_modifier
             float sum_radar_velocity_, mean_velocity_, min_range_, last_min_range_;
             float emr_gain_;
             std_msgs::Int32 emr_rollout_num_;
+            PlannerHNS::WayPoint current_pose_;
+            PlannerHNS::MapHandler map_handler_;
+            PlannerHNS::RoadNetwork map_;
+
 
             int m_nDummyObjPerRep;
             int m_nDetectedObjRepresentations;
-            std::vector<visualization_msgs::MarkerArray> m_DetectedPolygonsDummy;
-            std::vector<visualization_msgs::MarkerArray> m_DetectedPolygonsActual;
-            visualization_msgs::MarkerArray m_DetectedPolygonsAllMarkers;
-            visualization_msgs::MarkerArray m_DetectionCircles;
 
-            std::vector<visualization_msgs::MarkerArray> m_MatchingInfoDummy;
-            std::vector<visualization_msgs::MarkerArray> m_MatchingInfoActual;
+            std::vector<PlannerHNS::Lane*> closest_lanes_list_;
 
 
             tf::StampedTransform radar2lidar_transform_;
@@ -99,9 +98,11 @@ namespace op_rollout_modifier
             void callbackGetRadarData(const PointCloudRadar::ConstPtr &msg);
             void callbackGetLocalPlannerPath(const autoware_msgs::LaneArrayConstPtr& msg);
             void callbackGetDetectedObjectsArray(const autoware_msgs::DetectedObjectArrayConstPtr& msg);
+            void callbackGetCurrentPose(const geometry_msgs::PoseStampedConstPtr &msg);
             void VisualizeLocalTracking();
             void getObjectdataFromRadarPoints(const vector<autoware_msgs::DetectedObject>& lidar_objects_filtered, const vector<RadarXYZ>& radar_points_transformed);
             void emergencyDetector(const float& range, const float& velocity);
+            void getDistancetoAdjacentLane();
             
             ros::Publisher pub_rollouts_number;
             // ros::Publisher pub_RadarPointRviz;
@@ -110,6 +111,7 @@ namespace op_rollout_modifier
             ros::Subscriber sub_LocalPlannerPaths;
             ros::Subscriber sub_RadarData;
             ros::Subscriber sub_DetectedObjectsArray;
+            ros::Subscriber sub_CurrentPose;
             // ros::Subscriber
     };
 

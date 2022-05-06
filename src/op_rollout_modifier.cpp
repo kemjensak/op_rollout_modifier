@@ -21,22 +21,8 @@ namespace op_rollout_modifier
         sub_LocalPlannerPaths = nh.subscribe("/local_weighted_trajectories", 1, &RolloutModifierClass::callbackGetLocalPlannerPath, this);
         sub_RadarData = nh.subscribe(radar_topic_, 1, &RolloutModifierClass::callbackGetRadarData, this);
         sub_DetectedObjectsArray = nh.subscribe("/detection/contour_tracker/objects", 1, &RolloutModifierClass::callbackGetDetectedObjectsArray, this);
+        sub_CurrentPose = nh.subscribe("/current_pose", 1, &RolloutModifierClass::callbackGetCurrentPose, this);
         
-
-        // sub_radar_msg_ = nh_.subscribe(radar_topic_, 100)
-        // m_nDummyObjPerRep = 150;
-        // m_nDetectedObjRepresentations = 5;
-        // m_DetectedPolygonsDummy.push_back(visualization_msgs::MarkerArray());
-        // m_DetectedPolygonsDummy.push_back(visualization_msgs::MarkerArray());
-        // m_DetectedPolygonsDummy.push_back(visualization_msgs::MarkerArray());
-        // m_DetectedPolygonsDummy.push_back(visualization_msgs::MarkerArray());
-        // m_DetectedPolygonsDummy.push_back(visualization_msgs::MarkerArray());
-        // m_DetectedPolygonsActual = m_DetectedPolygonsDummy;
-        // PlannerHNS::ROSHelpers::InitMarkers(m_nDummyObjPerRep, m_DetectedPolygonsDummy.at(0), m_DetectedPolygonsDummy.at(1), m_DetectedPolygonsDummy.at(2), m_DetectedPolygonsDummy.at(3), m_DetectedPolygonsDummy.at(4));
-
-        // m_MatchingInfoDummy.push_back(visualization_msgs::MarkerArray());
-        // m_MatchingInfoActual = m_MatchingInfoDummy;
-        // PlannerHNS::ROSHelpers::InitMatchingMarkers(m_nDummyObjPerRep, m_MatchingInfoDummy.at(0));
     }
 
     RolloutModifierClass::~RolloutModifierClass()
@@ -77,8 +63,6 @@ namespace op_rollout_modifier
 
             radar_points_transformed_.push_back(point_transformed);
         }
-        
-        // std::cout << "x" << msg->x << 
     }
 
     void RolloutModifierClass::callbackGetDetectedObjectsArray(const autoware_msgs::DetectedObjectArrayConstPtr& msg)
@@ -96,6 +80,11 @@ namespace op_rollout_modifier
                 lidar_objects_filtered_.push_back(msg->objects.at(i));
             }
         }
+    }
+
+    void RolloutModifierClass::callbackGetCurrentPose(const geometry_msgs::PoseStampedConstPtr &msg)
+    {
+        current_pose_.pos = PlannerHNS::GPSPoint(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z, tf::getYaw(msg->pose.orientation));
     }
 
     void RolloutModifierClass::getObjectdataFromRadarPoints(const vector<autoware_msgs::DetectedObject>& lidar_objects_filtered, const vector<RadarXYZ>& radar_points_transformed)
@@ -120,7 +109,7 @@ namespace op_rollout_modifier
 
             if (object_velocity_from_radarpoints.size() > 1)
             {
-                sum_radar_velocity_ = std::accumulate(object_velocity_from_radarpoints.begin(), object_velocity_from_radarpoints.end(), 0.0);
+                sum_radar_velocity_ = accumulate(object_velocity_from_radarpoints.begin(), object_velocity_from_radarpoints.end(), 0.0);
                 mean_velocity_ = sum_radar_velocity_ / object_velocity_from_radarpoints.size();
                 min_range_ = *min_element(object_range_from_radarpoints.begin(), object_range_from_radarpoints.end());
             
@@ -147,38 +136,22 @@ namespace op_rollout_modifier
 
     }
 
+    void RolloutModifierClass::getDistancetoAdjacentLane()
+    {
+        //find and init current Lane
+        closest_lanes_list_ = PlannerHNS::MappingHelpers::GetClosestLanesFast(current_pose_, map_);
+        ROS_INFO(closest_lanes_list_);
+
+    }
+
     void RolloutModifierClass::mainLoop()
     {
+        map_handler_.LoadMap(map_, false);
         getObjectdataFromRadarPoints(lidar_objects_filtered_, radar_points_transformed_);
         
     }
     
 
-    // void RolloutModifierClass::VisualizeLocalTracking()
-    // {
-    //     PlannerHNS::ROSHelpers::ConvertTrackedObjectsMarkers(m_CurrentPos, lidar_objects_filtered_,
-    //                 m_DetectedPolygonsDummy.at(0), //centers_d
-    //                 m_DetectedPolygonsDummy.at(1), //dirs_d
-    //                 m_DetectedPolygonsDummy.at(2), //text_info_d
-    //                 m_DetectedPolygonsDummy.at(3), //polygons_d
-    //                 m_DetectedPolygonsDummy.at(4), //tracked_traj_d
-    //                 m_DetectedPolygonsActual.at(0), //centers
-    //                 m_DetectedPolygonsActual.at(1), //dirs
-    //                 m_DetectedPolygonsActual.at(2), //text_info
-    //                 m_DetectedPolygonsActual.at(3), //polygons
-    //                 m_DetectedPolygonsActual.at(4)); //tracked_traj
-
-    //             visualization_msgs::MarkerArray &centers, visualization_msgs::MarkerArray &dirs, visualization_msgs::MarkerArray &text_info, visualization_msgs::MarkerArray &polygons, visualization_msgs::MarkerArray &tracked_traj)
-
-    //     m_DetectedPolygonsAllMarkers.markers.clear();
-    //     m_DetectedPolygonsAllMarkers.markers.insert(m_DetectedPolygonsAllMarkers.markers.end(), m_DetectedPolygonsActual.at(0).markers.begin(), m_DetectedPolygonsActual.at(0).markers.end());
-    //     m_DetectedPolygonsAllMarkers.markers.insert(m_DetectedPolygonsAllMarkers.markers.end(), m_DetectedPolygonsActual.at(1).markers.begin(), m_DetectedPolygonsActual.at(1).markers.end());
-    //     m_DetectedPolygonsAllMarkers.markers.insert(m_DetectedPolygonsAllMarkers.markers.end(), m_DetectedPolygonsActual.at(2).markers.begin(), m_DetectedPolygonsActual.at(2).markers.end());
-    //     m_DetectedPolygonsAllMarkers.markers.insert(m_DetectedPolygonsAllMarkers.markers.end(), m_DetectedPolygonsActual.at(3).markers.begin(), m_DetectedPolygonsActual.at(3).markers.end());
-    //     m_DetectedPolygonsAllMarkers.markers.insert(m_DetectedPolygonsAllMarkers.markers.end(), m_DetectedPolygonsActual.at(4).markers.begin(), m_DetectedPolygonsActual.at(4).markers.end());
-
-    //     pub_DetectedPolygonsRviz.publish(m_DetectedPolygonsAllMarkers);
-    // }
 }
 
 int main(int argc, char **argv)
