@@ -5,7 +5,7 @@ namespace op_rollout_modifier
     :_nh("~"), x_min_(0.0), x_max_(200.0), y_min_(-1.0), y_max_(1.0), z_min_(-2.0), z_max_(1.0), aes_flag_(false)
     {
         emr_rollout_num_.data = 1;
-        emr_gain_ = 0.6;
+        emr_gain_ = 0.8;
         _nh.param<std::string>("radar_topic", radar_topic_, "/carla/ego_vehicle/radar_front");
         _nh.param<float>("thres_radius", thres_radius_, 2);
         
@@ -139,14 +139,14 @@ namespace op_rollout_modifier
     void RolloutModifierClass::getDistancetoAdjacentLane()
     {
         //find and init current Lane
-        closest_lanes_list_ = PlannerHNS::MappingHelpers::GetClosestLanesFast(current_pose_, map_);
-        ROS_INFO(closest_lanes_list_);
+        // closest_lanes_list_ = PlannerHNS::MappingHelpers::GetClosestLanesFast(current_pose_, map_);
+        // ROS_INFO(closest_lanes_list_);
 
     }
 
     void RolloutModifierClass::mainLoop()
     {
-        map_handler_.LoadMap(map_, false);
+        // map_handler_.LoadMap(map_, false);
         getObjectdataFromRadarPoints(lidar_objects_filtered_, radar_points_transformed_);
         
     }
