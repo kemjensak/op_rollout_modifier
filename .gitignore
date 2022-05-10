@@ -5,5 +5,6 @@
 *.settings
 *.vscode
 *.pcd
+*.csv
 /catkin_ws/build
 /catkin_ws/devel
