@@ -79,6 +79,7 @@ namespace op_rollout_modifier
             float sum_radar_velocity_, mean_velocity_, min_range_, last_min_range_;
             float emr_gain_;
             std_msgs::Int32 emr_rollout_num_;
+            std_msgs::Bool flag_data_;
             PlannerHNS::WayPoint current_pose_;
             PlannerHNS::MapHandler map_handler_;
             PlannerHNS::RoadNetwork map_;
@@ -106,7 +107,8 @@ namespace op_rollout_modifier
             
             ros::Publisher pub_rollouts_number;
             // ros::Publisher pub_RadarPointRviz;
-            ros::Publisher pub_FilteredPolygonsRviz;
+            // ros::Publisher pub_FilteredPolygonsRviz;
+            ros::Publisher pub_AES_flag;
 
             ros::Subscriber sub_LocalPlannerPaths;
             ros::Subscriber sub_RadarData;

@@ -2,26 +2,35 @@
 namespace op_rollout_modifier
 {
     RolloutModifierClass::RolloutModifierClass()
-    :_nh("~"), x_min_(0.0), x_max_(200.0), y_min_(-1.0), y_max_(1.0), z_min_(-2.0), z_max_(1.0), aes_flag_(false)
+    :_nh("~"),
+    x_min_(0.0),
+    x_max_(200.0),
+    y_min_(-1.0),
+    y_max_(1.0),
+    z_min_(-1.0),
+    z_max_(1.0)
     {
         emr_rollout_num_.data = 1;
-        emr_gain_ = 0.8;
+        emr_gain_ = 1.7;
+        aes_flag_ = false;
+
         _nh.param<std::string>("radar_topic", radar_topic_, "/carla/ego_vehicle/radar_front");
         _nh.param<float>("thres_radius", thres_radius_, 2);
         
         PlannerHNS::ROSHelpers::getTransformFromTF("ego_vehicle/radar_front", "ego_vehicle/lidar", tf_listener, radar2lidar_transform_);
-        radar2lidar_pose_.position.x = radar2lidar_transform_.getOrigin().x();
+        radar2lidar_pose_.position.x = radar2lidar_transform_.getOrigin().x(); //this has positive value
         radar2lidar_pose_.position.y = radar2lidar_transform_.getOrigin().y();
         radar2lidar_pose_.position.z = radar2lidar_transform_.getOrigin().z();
 
         pub_rollouts_number = nh.advertise<std_msgs::Int32>("op_update_rollouts_number", 1);
         // pub_RadarPointRviz = nh.advertise<visualization_msgs::MarkerArray>("radar_point_rviz", 1);
-        pub_FilteredPolygonsRviz = nh.advertise<visualization_msgs::MarkerArray>("filtered_polygons", 1);
+        // pub_FilteredPolygonsRviz = nh.advertise<visualization_msgs::MarkerArray>("filtered_polygons", 1);
+        pub_AES_flag = nh.advertise<std_msgs::Bool>("aes_flag", 1);
 
         sub_LocalPlannerPaths = nh.subscribe("/local_weighted_trajectories", 1, &RolloutModifierClass::callbackGetLocalPlannerPath, this);
         sub_RadarData = nh.subscribe(radar_topic_, 1, &RolloutModifierClass::callbackGetRadarData, this);
         sub_DetectedObjectsArray = nh.subscribe("/detection/contour_tracker/objects", 1, &RolloutModifierClass::callbackGetDetectedObjectsArray, this);
-        sub_CurrentPose = nh.subscribe("/current_pose", 1, &RolloutModifierClass::callbackGetCurrentPose, this);
+        // sub_CurrentPose = nh.subscribe("/current_pose", 1, &RolloutModifierClass::callbackGetCurrentPose, this);
         
     }
 
@@ -57,10 +66,11 @@ namespace op_rollout_modifier
         BOOST_FOREACH (const RadarXYZ& point, msg->points)
         {
             RadarXYZ point_transformed = point;
-            point_transformed.x += radar2lidar_pose_.position.x;
-            point_transformed.y += radar2lidar_pose_.position.y;
-            point_transformed.z += radar2lidar_pose_.position.z;
-
+            // point_transformed.x += radar2lidar_pose_.position.x;
+            // point_transformed.y += radar2lidar_pose_.position.y;
+            // point_transformed.z += radar2lidar_pose_.position.z;
+            // cout << radar2lidar_pose_.position.x; has positive value
+            // changed input to radar points
             radar_points_transformed_.push_back(point_transformed);
         }
     }
@@ -79,6 +89,8 @@ namespace op_rollout_modifier
             {
                 lidar_objects_filtered_.push_back(msg->objects.at(i));
             }
+            // cout << msg->objects.at(i).pose.position.x<<endl;
+            // lidar_objects_filtered_.push_back(msg->objects.at(i));
         }
     }
 
@@ -98,8 +110,8 @@ namespace op_rollout_modifier
             sum_radar_velocity_ = mean_velocity_ = min_range_ = 0.0;
             for (unsigned int pt_num = 0; pt_num < radar_points_transformed.size(); pt_num++)
             {
-                if (thres_radius_ < hypot(lidar_objects_filtered.at(obj_num).x - radar_points_transformed.at(pt_num).x,
-                                          lidar_objects_filtered.at(obj_num).y - radar_points_transformed.at(pt_num).y))
+                if (thres_radius_ > hypot(lidar_objects_filtered.at(obj_num).pose.position.x - radar_points_transformed.at(pt_num).x,
+                                          lidar_objects_filtered.at(obj_num).pose.position.y - radar_points_transformed.at(pt_num).y))
                     {
                         object_range_from_radarpoints.push_back(radar_points_transformed.at(pt_num).Range);
                         object_velocity_from_radarpoints.push_back(radar_points_transformed.at(pt_num).Velocity);
@@ -113,9 +125,9 @@ namespace op_rollout_modifier
                 mean_velocity_ = sum_radar_velocity_ / object_velocity_from_radarpoints.size();
                 min_range_ = *min_element(object_range_from_radarpoints.begin(), object_range_from_radarpoints.end());
             
-                ROS_INFO("min: %f",min_range_);
+                // ROS_INFO("mean: %f min: %f",  mean_velocity_, min_range_);
                 
-                if (mean_velocity_<0) emergencyDetector(min_range_, -mean_velocity_);
+                if (mean_velocity_<=0) emergencyDetector(min_range_, -mean_velocity_);
 
                 
             }
@@ -124,14 +136,18 @@ namespace op_rollout_modifier
 
     void RolloutModifierClass::emergencyDetector(const float& range, const float& velocity)
     {
-        if ( emr_gain_ * (pow(velocity, 2) * 0.0648 + (0.72 + velocity)) > range  && aes_flag_ == false)
+        if ( emr_gain_ * (pow(velocity, 2) * 0.07 + (0.72 + velocity)) > range  && aes_flag_ == false)
         {
+            aes_flag_ = true;
             pub_rollouts_number.publish(emr_rollout_num_);
-            ROS_WARN("AES activate INFO /n mean: %f min: %f",  mean_velocity_, last_min_range_-radar2lidar_pose_.position.x);
+            flag_data_.data = aes_flag_;
+            pub_AES_flag.publish(flag_data_);
+            ROS_WARN("mean: %f min: %f",  mean_velocity_, last_min_range_);
 
             // ROS_INFO("activated");
-            aes_flag_ = true;
+            
         }
+        ROS_INFO("min: %f", min_range_);
         last_min_range_ = min_range_;
 
     }
