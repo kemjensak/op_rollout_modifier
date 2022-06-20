@@ -23,10 +23,10 @@ class CarlaTrajectoryRecorder:
         self.AES_activated_time = None
         self.cutout_time_of_lv = None
 
-        client = carla.Client('localhost', 2000)
-        client.set_timeout(2.0)
+        self.client = carla.Client('localhost', 2000)
+        self.client.set_timeout(2.0)
         
-        self.world = client.get_world()
+        self.world = self.client.get_world()
 
         self.world.wait_for_tick()
 
@@ -49,20 +49,28 @@ class CarlaTrajectoryRecorder:
         self.left_lane_id = self.starting_wp.get_left_lane().lane_id
         self.right_lane_id = self.starting_wp.get_right_lane().lane_id
 
+        
+        
+
         filename = datetime.now().strftime("%Y-%m-%d-%H%M%S")
         self.f = open('/home/irol/ros_ws/catkin_ws/src/carla_sim/op_rollout_modifier/export/write_'+ filename +'.csv','a')
         self.wr = csv.writer(self.f)
+
+        print("Recording on file: %s" % self.client.start_recorder('/home/irol/ros_ws/catkin_ws/src/carla_sim/op_rollout_modifier/export/write_'+ filename +'.log'))
+
+
 
     def callback_aes_flag(self, msg):
         self.is_AES_activated = msg.data
         self.AES_activated_time = rospy.Time.now()
 
+    def exit(self):
+        self.f.close()
+        self.client.stop_recorder()
+        print('exit')
 
+    def get_xy_distance(self):
 
-    def main(self):
-
-        current_time = rospy.Time.now()
-        elapsed_time = (current_time - self.initial_time).to_sec()
         current_location = self.vut_actor[0].get_location()
         current_location.z = 0.0
         nearest_wp = self.map.get_waypoint(current_location, project_to_road=True)
@@ -99,6 +107,16 @@ class CarlaTrajectoryRecorder:
 
         print(x_distance)
         print(y_distance)
+        return(x_distance, y_distance)
+
+
+
+    def main(self):
+
+        current_time = rospy.Time.now()
+        elapsed_time = (current_time - self.initial_time).to_sec()
+
+        x_distance, y_distance = self.get_xy_distance()
 
         if self.cutout_time_of_lv == None and self.map.get_waypoint(self.lv_actor[1].get_location(), project_to_road=True).lane_id == self.left_lane_id:
             self.cutout_time_of_lv = rospy.Time.now() # saves time when the LV's nearest waypoint changes to adjacent lane
@@ -121,10 +139,14 @@ class CarlaTrajectoryRecorder:
         
         self.world.wait_for_tick()
 
+
+        
+
 if __name__ == '__main__':
     rospy.init_node("trajectory_recorder")
     RunTest = CarlaTrajectoryRecorder()
     while not rospy.is_shutdown():
         RunTest.main()
-    RunTest.f.close()
+    RunTest.exit()
+    
     
