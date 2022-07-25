@@ -56,7 +56,7 @@ class CarlaTrajectoryRecorder:
         self.f = open('/home/irol/ros_ws/catkin_ws/src/carla_sim/op_rollout_modifier/export/write_'+ filename +'.csv','a')
         self.wr = csv.writer(self.f)
 
-        print("Recording on file: %s" % self.client.start_recorder('/home/irol/ros_ws/catkin_ws/src/carla_sim/op_rollout_modifier/export/write_'+ filename +'.log'))
+        # print("Recording on file: %s" % self.client.start_recorder('/home/irol/ros_ws/catkin_ws/src/carla_sim/op_rollout_modifier/export/write_'+ filename +'.log'))
 
 
 
@@ -66,7 +66,7 @@ class CarlaTrajectoryRecorder:
 
     def exit(self):
         self.f.close()
-        self.client.stop_recorder()
+        # self.client.stop_recorder()
         print('exit')
 
     def get_xy_distance(self):
